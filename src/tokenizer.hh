@@ -8,6 +8,12 @@ enum class TokenType {
   StartTag,
   EndTag,
   Character,
+  Doctype,
+};
+
+struct Attribute {
+  std::string name;
+  std::string value;
 };
 
 class Token {
@@ -17,12 +23,14 @@ public:
 
   [[nodiscard]] TokenType type() const { return m_type; }
   [[nodiscard]] std::string &data() { return m_data; }
+  [[nodiscard]] std::vector<Attribute> &attributes() { return m_attributes; }
 
   [[nodiscard]] std::string dump() const;
 
 private:
   TokenType m_type;
   std::string m_data;
+  std::vector<Attribute> m_attributes;
 };
 
 enum class State {
@@ -30,6 +38,16 @@ enum class State {
   TagOpen,
   TagName,
   EndTagOpen,
+  MarkupDeclarationOpen,
+  Doctype,
+  BeforeDoctypeName,
+  DoctypeName,
+  BeforeAttributeName,
+  AttributeName,
+  AfterAttributeName,
+  BeforeAttributeValue,
+  AttributeValueDoubleQuoted,
+  AfterAttributeValueQuoted,
 };
 
 class Tokenizer {
@@ -45,12 +63,25 @@ private:
   std::vector<Token> m_tokens;
 
   void step();
-  void step_data();
-  void step_tag_open();
-  void step_tag_name();
-  void step_end_tag_open();
+  void handle_data();
+  void handle_tag_open();
+  void handle_tag_name();
+  void handle_end_tag_open();
+  void handle_markup_declaration_open();
+  void handle_doctype();
+  void handle_before_doctype_name();
+  void handle_doctype_name();
+  void handle_before_attribute_name();
+  void handle_attribute_name();
+  void handle_after_attribute_name();
+  void handle_before_attribute_value();
+  void handle_attribute_value_double_quoted();
+  void handle_after_attribute_value_quoted();
 
   [[nodiscard]] Token &current_token() { return m_tokens.back(); }
   char consume() { return m_data[m_current++]; }
+  char peek(long i) {
+    return m_data[static_cast<size_t>(static_cast<long>(m_current) + i)];
+  }
   [[nodiscard]] bool eof() const { return m_current >= m_data.length(); }
 };
