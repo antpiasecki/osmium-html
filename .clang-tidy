@@ -1,0 +1,1 @@
+Checks: '*,clang-analyzer-*,-llvmlibc-*,-fuchsia-*,-altera-*,-abseil-*,-android-*,-misc-no-recursion,-modernize-use-trailing-return-type,-readability-identifier-length,-*-easily-swappable-parameters,-*-readability-todo,-readability-function-cognitive-complexity,-*-special-member-functions,-concurrency-mt-unsafe,-misc-non-private-member-variables-in-classes'
