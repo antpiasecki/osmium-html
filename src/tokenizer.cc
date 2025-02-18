@@ -24,6 +24,9 @@ std::ostream &operator<<(std::ostream &os, const TokenType e) {
   case TokenType::Doctype:
     os << "Doctype";
     break;
+  case TokenType::Comment:
+    os << "Comment";
+    break;
   default:
     UNIMPLEMENTED();
   }
@@ -71,6 +74,10 @@ void Tokenizer::step() {
            [this]() { handle_attribute_value_double_quoted(); }},
           {State::AfterAttributeValueQuoted,
            [this]() { handle_after_attribute_value_quoted(); }},
+          {State::CommentStart, [this]() { handle_comment_start(); }},
+          {State::Comment, [this]() { handle_comment(); }},
+          {State::CommentEndDash, [this]() { handle_comment_end_dash(); }},
+          {State::CommentEnd, [this]() { handle_comment_end(); }},
       };
 
   auto it = state_handlers.find(m_state);
@@ -136,6 +143,10 @@ void Tokenizer::handle_markup_declaration_open() {
       std::toupper(peek(6)) == 'E') {
     m_current += 7;
     m_state = State::Doctype;
+  } else if (std::toupper(peek(0)) == '-' && std::toupper(peek(1)) == '-') {
+    m_current += 2;
+    m_tokens.emplace_back(TokenType::Comment, "");
+    m_state = State::CommentStart;
   } else {
     UNIMPLEMENTED();
   }
@@ -248,5 +259,59 @@ void Tokenizer::handle_after_attribute_value_quoted() {
     m_state = State::Data;
   } else {
     UNIMPLEMENTED();
+  }
+}
+
+// https://html.spec.whatwg.org/multipage/parsing.html#comment-start-state
+void Tokenizer::handle_comment_start() {
+  char c = consume();
+  if (c == '-') {
+    UNIMPLEMENTED();
+  } else if (c == '>') {
+    UNIMPLEMENTED();
+  } else {
+    m_current--;
+    m_state = State::Comment;
+  }
+}
+
+// https://html.spec.whatwg.org/multipage/parsing.html#comment-state
+void Tokenizer::handle_comment() {
+  char c = consume();
+  if (c == '<') {
+    UNIMPLEMENTED();
+  } else if (c == '-') {
+    m_state = State::CommentEndDash;
+  } else {
+    current_token().data() += c;
+  }
+}
+
+// https://html.spec.whatwg.org/multipage/parsing.html#comment-end-dash-state
+void Tokenizer::handle_comment_end_dash() {
+  char c = consume();
+  if (c == '-') {
+    m_state = State::CommentEnd;
+  } else {
+    current_token().data() += "-";
+    m_current--;
+    m_state = State::Comment;
+  }
+}
+
+// https://html.spec.whatwg.org/multipage/parsing.html#comment-end-state
+void Tokenizer::handle_comment_end() {
+  char c = consume();
+  if (c == '>') {
+    m_state = State::Data;
+  } else if (c == '!') {
+    UNIMPLEMENTED();
+  } else if (c == '-') {
+    current_token().data() += c;
+  } else {
+    current_token().data() += "-";
+    current_token().data() += "-";
+    m_current--;
+    m_state = State::Comment;
   }
 }

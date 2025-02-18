@@ -9,6 +9,7 @@ enum class TokenType {
   EndTag,
   Character,
   Doctype,
+  Comment,
 };
 
 struct Attribute {
@@ -48,6 +49,10 @@ enum class State {
   BeforeAttributeValue,
   AttributeValueDoubleQuoted,
   AfterAttributeValueQuoted,
+  CommentStart,
+  Comment,
+  CommentEndDash,
+  CommentEnd,
 };
 
 class Tokenizer {
@@ -77,6 +82,10 @@ private:
   void handle_before_attribute_value();
   void handle_attribute_value_double_quoted();
   void handle_after_attribute_value_quoted();
+  void handle_comment_start();
+  void handle_comment();
+  void handle_comment_end_dash();
+  void handle_comment_end();
 
   [[nodiscard]] Token &current_token() { return m_tokens.back(); }
   char consume() { return m_data[m_current++]; }
