@@ -1,8 +1,14 @@
 #pragma once
 
+#include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
+
+#define UNIMPLEMENTED()                                                        \
+  std::cerr << "UNIMPLEMENTED() reached on " << __FILE__ << ", line "          \
+            << __LINE__ << "\n";                                               \
+  exit(1)
 
 enum class TokenType {
   StartTag,
@@ -11,6 +17,29 @@ enum class TokenType {
   Doctype,
   Comment,
 };
+
+inline std::ostream &operator<<(std::ostream &os, const TokenType e) {
+  switch (e) {
+  case TokenType::StartTag:
+    os << "StartTag";
+    break;
+  case TokenType::EndTag:
+    os << "EndTag";
+    break;
+  case TokenType::Character:
+    os << "Character";
+    break;
+  case TokenType::Doctype:
+    os << "Doctype";
+    break;
+  case TokenType::Comment:
+    os << "Comment";
+    break;
+  default:
+    UNIMPLEMENTED();
+  }
+  return os;
+}
 
 class Token {
 public:
@@ -25,6 +54,7 @@ public:
   [[nodiscard]] TokenType type() const { return m_type; }
   [[nodiscard]] std::string &data() { return m_data; }
   [[nodiscard]] std::vector<Attribute> &attributes() { return m_attributes; }
+  [[nodiscard]] bool is_self_closing() const { return m_is_self_closing; }
   void set_is_self_closing(bool v) { m_is_self_closing = v; }
 
   [[nodiscard]] std::string dump() const;
@@ -52,6 +82,11 @@ private:
     Doctype,
     BeforeDoctypeName,
     DoctypeName,
+    AfterDoctypeName,
+    AfterDoctypePublicKeyword,
+    BeforeDoctypePublicIdentifier,
+    DoctypePublicIdentifierDoubleQuoted,
+    AfterDoctypePublicIdentifier,
     BeforeAttributeName,
     AttributeName,
     AfterAttributeName,
@@ -78,6 +113,11 @@ private:
   void handle_doctype();
   void handle_before_doctype_name();
   void handle_doctype_name();
+  void handle_after_doctype_name();
+  void handle_after_doctype_public_keyword();
+  void handle_before_doctype_public_identifier();
+  void handle_doctype_public_identifier_double_quoted();
+  void handle_after_doctype_public_identifier();
   void handle_before_attribute_name();
   void handle_attribute_name();
   void handle_after_attribute_name();

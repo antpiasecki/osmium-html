@@ -1,3 +1,4 @@
+#include "parser.hh"
 #include "tokenizer.hh"
 #include <cassert>
 #include <fstream>
@@ -14,8 +15,9 @@ int main(int argc, char *argv[]) {
   std::stringstream ss;
   ss << file.rdbuf();
 
-  Tokenizer parser(ss.str());
-  for (const auto &token : parser.parse()) {
-    std::cout << token.dump() << std::endl;
-  }
+  Tokenizer tokenizer(ss.str());
+  auto tokens = tokenizer.parse();
+
+  Parser parser(tokens);
+  std::cout << parser.parse()->dump() << std::endl;
 }

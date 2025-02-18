@@ -1,37 +1,7 @@
 #include "tokenizer.hh"
 #include <cassert>
-#include <cctype>
 #include <functional>
-#include <iostream>
 #include <sstream>
-
-#define UNIMPLEMENTED()                                                        \
-  std::cerr << "UNIMPLEMENTED() reached on " << __FILE__ << ", line "          \
-            << __LINE__ << "\n";                                               \
-  exit(1)
-
-std::ostream &operator<<(std::ostream &os, const TokenType e) {
-  switch (e) {
-  case TokenType::StartTag:
-    os << "StartTag";
-    break;
-  case TokenType::EndTag:
-    os << "EndTag";
-    break;
-  case TokenType::Character:
-    os << "Character";
-    break;
-  case TokenType::Doctype:
-    os << "Doctype";
-    break;
-  case TokenType::Comment:
-    os << "Comment";
-    break;
-  default:
-    UNIMPLEMENTED();
-  }
-  return os;
-}
 
 std::string Token::dump() const {
   std::stringstream ss;
@@ -56,6 +26,15 @@ std::vector<Token> Tokenizer::parse() {
           {State::BeforeDoctypeName,
            [this]() { handle_before_doctype_name(); }},
           {State::DoctypeName, [this]() { handle_doctype_name(); }},
+          {State::AfterDoctypeName, [this]() { handle_after_doctype_name(); }},
+          {State::AfterDoctypePublicKeyword,
+           [this]() { handle_after_doctype_public_keyword(); }},
+          {State::BeforeDoctypePublicIdentifier,
+           [this]() { handle_before_doctype_public_identifier(); }},
+          {State::DoctypePublicIdentifierDoubleQuoted,
+           [this]() { handle_doctype_public_identifier_double_quoted(); }},
+          {State::AfterDoctypePublicIdentifier,
+           [this]() { handle_after_doctype_public_identifier(); }},
           {State::BeforeAttributeName,
            [this]() { handle_before_attribute_name(); }},
           {State::AttributeName, [this]() { handle_attribute_name(); }},
@@ -183,10 +162,83 @@ void Tokenizer::handle_before_doctype_name() {
 // https://html.spec.whatwg.org/multipage/parsing.html#doctype-name-state
 void Tokenizer::handle_doctype_name() {
   char c = consume();
-  if (c == '>') {
+  if (c == ' ' || c == '\t' || c == '\n') {
+    m_state = State::AfterDoctypeName;
+  } else if (c == '>') {
     m_state = State::Data;
   } else {
     current_token().data() += c;
+  }
+}
+
+// https://html.spec.whatwg.org/multipage/parsing.html#after-doctype-name-state
+void Tokenizer::handle_after_doctype_name() {
+  char c = consume();
+  if (c == ' ' || c == '\t' || c == '\n') {
+    // ignore
+  } else if (c == '>') {
+    m_state = State::Data;
+  } else if (std::toupper(peek(-1)) == 'P' && std::toupper(peek(0)) == 'U' &&
+             std::toupper(peek(1)) == 'B' && std::toupper(peek(2)) == 'L' &&
+             std::toupper(peek(3)) == 'I' && std::toupper(peek(4)) == 'C') {
+    m_current += 5;
+    m_state = State::AfterDoctypePublicKeyword;
+  } else {
+    UNIMPLEMENTED();
+  }
+}
+
+// https://html.spec.whatwg.org/multipage/parsing.html#after-doctype-public-keyword-state
+void Tokenizer::handle_after_doctype_public_keyword() {
+  char c = consume();
+  if (c == ' ' || c == '\t' || c == '\n') {
+    m_state = State::BeforeDoctypePublicIdentifier;
+  } else {
+    std::cout << c << std::endl;
+    UNIMPLEMENTED();
+  }
+}
+
+// https://html.spec.whatwg.org/multipage/parsing.html#before-doctype-public-identifier-state
+void Tokenizer::handle_before_doctype_public_identifier() {
+  char c = consume();
+  if (c == ' ' || c == '\t' || c == '\n') {
+    // ignore
+  } else if (c == '"') {
+    m_state = State::DoctypePublicIdentifierDoubleQuoted;
+  } else if (c == '\'') {
+    UNIMPLEMENTED();
+  } else if (c == '>') {
+    UNIMPLEMENTED();
+  } else {
+    UNIMPLEMENTED();
+  }
+}
+
+// https://html.spec.whatwg.org/multipage/parsing.html#before-doctype-public-identifier-state
+void Tokenizer::handle_doctype_public_identifier_double_quoted() {
+  char c = consume();
+  if (c == '"') {
+    m_state = State::AfterDoctypePublicIdentifier;
+  } else {
+    // TODO: >Append the current input character to the current DOCTYPE token's
+    // public identifier.
+  }
+}
+
+// https://html.spec.whatwg.org/multipage/parsing.html#after-doctype-public-identifier-state
+void Tokenizer::handle_after_doctype_public_identifier() {
+  char c = consume();
+  if (c == ' ' || c == '\t' || c == '\n') {
+    UNIMPLEMENTED();
+  } else if (c == '"') {
+    UNIMPLEMENTED();
+  } else if (c == '\'') {
+    UNIMPLEMENTED();
+  } else if (c == '>') {
+    m_state = State::Data;
+  } else {
+    UNIMPLEMENTED();
   }
 }
 
