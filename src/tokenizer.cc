@@ -44,13 +44,6 @@ std::string Token::dump() const {
 }
 
 std::vector<Token> Tokenizer::parse() {
-  while (!eof()) { // TODO: handle EOF
-    step();
-  }
-  return m_tokens;
-}
-
-void Tokenizer::step() {
   static const std::unordered_map<State, std::function<void()>> state_handlers =
       {
           {State::Data, [this]() { handle_data(); }},
@@ -78,17 +71,24 @@ void Tokenizer::step() {
           {State::Comment, [this]() { handle_comment(); }},
           {State::CommentEndDash, [this]() { handle_comment_end_dash(); }},
           {State::CommentEnd, [this]() { handle_comment_end(); }},
+          {State::SelfClosingStartTag,
+           [this]() { handle_self_closing_start_tag(); }},
       };
 
-  auto it = state_handlers.find(m_state);
-  assert(it != state_handlers.end());
-  it->second();
+  while (!eof()) {
+    auto it = state_handlers.find(m_state);
+    assert(it != state_handlers.end());
+    it->second();
+  }
+  return m_tokens;
 }
 
 // https://html.spec.whatwg.org/multipage/parsing.html#data-state
 void Tokenizer::handle_data() {
   char c = consume();
-  if (c == '<') {
+  if (c == '&') {
+    UNIMPLEMENTED();
+  } else if (c == '<') {
     m_state = State::TagOpen;
   } else {
     m_tokens.emplace_back(TokenType::Character, std::string(1, c));
@@ -106,6 +106,8 @@ void Tokenizer::handle_tag_open() {
     m_tokens.emplace_back(TokenType::StartTag, "");
     m_current--;
     m_state = State::TagName;
+  } else if (c == '?') {
+    UNIMPLEMENTED();
   } else {
     UNIMPLEMENTED();
   }
@@ -116,6 +118,8 @@ void Tokenizer::handle_tag_name() {
   char c = consume();
   if (c == '>') {
     m_state = State::Data;
+  } else if (c == '/') {
+    m_state = State::SelfClosingStartTag;
   } else if (c == '\t' || c == '\n' || c == ' ') {
     m_state = State::BeforeAttributeName;
   } else {
@@ -130,6 +134,8 @@ void Tokenizer::handle_end_tag_open() {
     m_tokens.emplace_back(TokenType::EndTag, "");
     m_current--;
     m_state = State::TagName;
+  } else if (c == '>') {
+    UNIMPLEMENTED();
   } else {
     UNIMPLEMENTED();
   }
@@ -192,8 +198,10 @@ void Tokenizer::handle_before_attribute_name() {
   } else if (c == '/' || c == '>') {
     m_current--;
     m_state = State::AfterAttributeName;
+  } else if (c == '=') {
+    UNIMPLEMENTED();
   } else {
-    current_token().attributes().push_back(Attribute{});
+    current_token().attributes().push_back(Token::Attribute{});
     m_current--;
     m_state = State::AttributeName;
   }
@@ -209,6 +217,8 @@ void Tokenizer::handle_attribute_name() {
     m_state = State::BeforeAttributeValue;
   } else if (c == '>') {
     m_state = State::Data;
+  } else if (c == '"' || c == '\'' || c == '<') {
+    UNIMPLEMENTED();
   } else {
     current_token().attributes().back().name += c;
   }
@@ -221,6 +231,8 @@ void Tokenizer::handle_after_attribute_name() {
     // ignore
   } else if (c == '=') {
     m_state = State::BeforeAttributeValue;
+  } else if (c == '/') {
+    m_state = State::SelfClosingStartTag;
   } else if (c == '>') {
     m_state = State::Data;
   } else {
@@ -235,6 +247,10 @@ void Tokenizer::handle_before_attribute_value() {
     // ignore
   } else if (c == '"') {
     m_state = State::AttributeValueDoubleQuoted;
+  } else if (c == '\'') {
+    UNIMPLEMENTED();
+  } else if (c == '>') {
+    UNIMPLEMENTED();
   } else {
     UNIMPLEMENTED();
   }
@@ -255,6 +271,8 @@ void Tokenizer::handle_after_attribute_value_quoted() {
   char c = consume();
   if (c == ' ' || c == '\t' || c == '\n') {
     m_state = State::BeforeAttributeName;
+  } else if (c == '/') {
+    m_state = State::SelfClosingStartTag;
   } else if (c == '>') {
     m_state = State::Data;
   } else {
@@ -313,5 +331,16 @@ void Tokenizer::handle_comment_end() {
     current_token().data() += "-";
     m_current--;
     m_state = State::Comment;
+  }
+}
+
+// https://html.spec.whatwg.org/multipage/parsing.html#self-closing-start-tag-state
+void Tokenizer::handle_self_closing_start_tag() {
+  char c = consume();
+  if (c == '>') {
+    current_token().set_is_self_closing(true);
+    m_state = State::Data;
+  } else {
+    UNIMPLEMENTED();
   }
 }

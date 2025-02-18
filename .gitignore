@@ -1,3 +1,4 @@
-.cache/
-build/
-.vscode/
+/.cache
+/build
+/.vscode
+/samples

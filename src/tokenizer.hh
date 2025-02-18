@@ -12,19 +12,20 @@ enum class TokenType {
   Comment,
 };
 
-struct Attribute {
-  std::string name;
-  std::string value;
-};
-
 class Token {
 public:
+  struct Attribute {
+    std::string name;
+    std::string value;
+  };
+
   Token(TokenType type, std::string data)
       : m_type(type), m_data(std::move(data)) {}
 
   [[nodiscard]] TokenType type() const { return m_type; }
   [[nodiscard]] std::string &data() { return m_data; }
   [[nodiscard]] std::vector<Attribute> &attributes() { return m_attributes; }
+  void set_is_self_closing(bool v) { m_is_self_closing = v; }
 
   [[nodiscard]] std::string dump() const;
 
@@ -32,27 +33,7 @@ private:
   TokenType m_type;
   std::string m_data;
   std::vector<Attribute> m_attributes;
-};
-
-enum class State {
-  Data,
-  TagOpen,
-  TagName,
-  EndTagOpen,
-  MarkupDeclarationOpen,
-  Doctype,
-  BeforeDoctypeName,
-  DoctypeName,
-  BeforeAttributeName,
-  AttributeName,
-  AfterAttributeName,
-  BeforeAttributeValue,
-  AttributeValueDoubleQuoted,
-  AfterAttributeValueQuoted,
-  CommentStart,
-  Comment,
-  CommentEndDash,
-  CommentEnd,
+  bool m_is_self_closing = false;
 };
 
 class Tokenizer {
@@ -62,12 +43,33 @@ public:
   std::vector<Token> parse();
 
 private:
+  enum class State {
+    Data,
+    TagOpen,
+    TagName,
+    EndTagOpen,
+    MarkupDeclarationOpen,
+    Doctype,
+    BeforeDoctypeName,
+    DoctypeName,
+    BeforeAttributeName,
+    AttributeName,
+    AfterAttributeName,
+    BeforeAttributeValue,
+    AttributeValueDoubleQuoted,
+    AfterAttributeValueQuoted,
+    CommentStart,
+    Comment,
+    CommentEndDash,
+    CommentEnd,
+    SelfClosingStartTag,
+  };
+
   State m_state{State::Data};
   std::string m_data;
   size_t m_current = 0;
   std::vector<Token> m_tokens;
 
-  void step();
   void handle_data();
   void handle_tag_open();
   void handle_tag_name();
@@ -86,6 +88,7 @@ private:
   void handle_comment();
   void handle_comment_end_dash();
   void handle_comment_end();
+  void handle_self_closing_start_tag();
 
   [[nodiscard]] Token &current_token() { return m_tokens.back(); }
   char consume() { return m_data[m_current++]; }
