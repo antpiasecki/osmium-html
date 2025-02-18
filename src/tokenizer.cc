@@ -44,6 +44,8 @@ std::vector<Token> Tokenizer::parse() {
            [this]() { handle_before_attribute_value(); }},
           {State::AttributeValueDoubleQuoted,
            [this]() { handle_attribute_value_double_quoted(); }},
+          {State::AttributeValueUnquoted,
+           [this]() { handle_attribute_value_unquoted(); }},
           {State::AfterAttributeValueQuoted,
            [this]() { handle_after_attribute_value_quoted(); }},
           {State::CommentStart, [this]() { handle_comment_start(); }},
@@ -52,6 +54,7 @@ std::vector<Token> Tokenizer::parse() {
           {State::CommentEnd, [this]() { handle_comment_end(); }},
           {State::SelfClosingStartTag,
            [this]() { handle_self_closing_start_tag(); }},
+          {State::ScriptData, [this]() { handle_script_data(); }},
       };
 
   while (!eof()) {
@@ -65,9 +68,8 @@ std::vector<Token> Tokenizer::parse() {
 // https://html.spec.whatwg.org/multipage/parsing.html#data-state
 void Tokenizer::handle_data() {
   char c = consume();
-  if (c == '&') {
-    UNIMPLEMENTED();
-  } else if (c == '<') {
+  // TODO: handle entities
+  if (c == '<') {
     m_state = State::TagOpen;
   } else {
     m_tokens.emplace_back(TokenType::Character, std::string(1, c));
@@ -96,7 +98,13 @@ void Tokenizer::handle_tag_open() {
 void Tokenizer::handle_tag_name() {
   char c = consume();
   if (c == '>') {
-    m_state = State::Data;
+    if (current_token().type() == TokenType::StartTag &&
+        (current_token().data() == "script" ||
+         current_token().data() == "style")) {
+      m_state = State::ScriptData;
+    } else {
+      m_state = State::Data;
+    }
   } else if (c == '/') {
     m_state = State::SelfClosingStartTag;
   } else if (c == '\t' || c == '\n' || c == ' ') {
@@ -194,7 +202,6 @@ void Tokenizer::handle_after_doctype_public_keyword() {
   if (c == ' ' || c == '\t' || c == '\n') {
     m_state = State::BeforeDoctypePublicIdentifier;
   } else {
-    std::cout << c << std::endl;
     UNIMPLEMENTED();
   }
 }
@@ -304,7 +311,7 @@ void Tokenizer::handle_before_attribute_value() {
   } else if (c == '>') {
     UNIMPLEMENTED();
   } else {
-    UNIMPLEMENTED();
+    m_state = State::AttributeValueUnquoted;
   }
 }
 
@@ -318,6 +325,23 @@ void Tokenizer::handle_attribute_value_double_quoted() {
   }
 }
 
+// https://html.spec.whatwg.org/multipage/parsing.html#attribute-value-(unquoted)-state
+void Tokenizer::handle_attribute_value_unquoted() {
+  char c = consume();
+  if (c == ' ' || c == '\t' || c == '\n') {
+    m_state = State::BeforeAttributeName;
+  } else if (c == '>') {
+    if (current_token().data() == "script" ||
+        current_token().data() == "style") {
+      m_state = State::ScriptData;
+    } else {
+      m_state = State::Data;
+    }
+  } else {
+    current_token().attributes().back().value += c;
+  }
+}
+
 // https://html.spec.whatwg.org/multipage/parsing.html#after-attribute-value-(quoted)-state
 void Tokenizer::handle_after_attribute_value_quoted() {
   char c = consume();
@@ -326,7 +350,12 @@ void Tokenizer::handle_after_attribute_value_quoted() {
   } else if (c == '/') {
     m_state = State::SelfClosingStartTag;
   } else if (c == '>') {
-    m_state = State::Data;
+    if (current_token().data() == "script" ||
+        current_token().data() == "style") {
+      m_state = State::ScriptData;
+    } else {
+      m_state = State::Data;
+    }
   } else {
     UNIMPLEMENTED();
   }
@@ -394,5 +423,19 @@ void Tokenizer::handle_self_closing_start_tag() {
     m_state = State::Data;
   } else {
     UNIMPLEMENTED();
+  }
+}
+
+// not in the spec and very buggy but its the easiest way to do this. im sorry
+void Tokenizer::handle_script_data() {
+  if (std::toupper(peek(0)) == '<' && std::toupper(peek(1)) == '/' &&
+      std::toupper(peek(2)) == 'S' && std::toupper(peek(3)) == 'C' &&
+      std::toupper(peek(4)) == 'R' && std::toupper(peek(5)) == 'I' &&
+      std::toupper(peek(6)) == 'P' && std::toupper(peek(7)) == 'T' &&
+      std::toupper(peek(8)) == '>') {
+    m_state = State::Data;
+  } else {
+    char c = consume();
+    m_tokens.emplace_back(TokenType::Character, std::string(1, c));
   }
 }

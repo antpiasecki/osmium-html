@@ -18,7 +18,7 @@ static std::string escape(const std::string &s) {
 class Node {
 public:
   virtual ~Node() = default;
-  virtual std::string dump() = 0;
+  virtual std::string dump(size_t i) = 0;
 };
 
 class Element : public Node {
@@ -37,17 +37,16 @@ public:
     m_children.emplace_back(child);
   }
 
-  std::string dump() override {
+  std::string dump(size_t i) override {
     std::stringstream ss;
-    ss << "Element(\"" << m_name << "\", attributes={";
+    ss << std::string(2 * i, ' ') << "- " << m_name;
     for (const auto &a : m_attributes) {
-      ss << "\"" << escape(a.first) << "\":\"" << escape(a.second) << "\",";
+      ss << " " << escape(a.first) << "=\"" << escape(a.second) << "\"";
     }
-    ss << "}, children=[";
+    ss << "\n";
     for (const auto &e : m_children) {
-      ss << e->dump() << ",";
+      ss << e->dump(i + 2);
     }
-    ss << "])";
     return ss.str();
   }
 
@@ -63,8 +62,10 @@ public:
 
   [[nodiscard]] std::string content() const { return m_content; }
 
-  std::string dump() override {
-    return "TextNode(\"" + escape(m_content) + "\")";
+  std::string dump(size_t i) override {
+    std::stringstream ss;
+    ss << std::string(2 * i, ' ') << "- \"" + escape(m_content) << "\"\n";
+    return ss.str();
   }
 
 private:

@@ -92,12 +92,14 @@ private:
     AfterAttributeName,
     BeforeAttributeValue,
     AttributeValueDoubleQuoted,
+    AttributeValueUnquoted,
     AfterAttributeValueQuoted,
     CommentStart,
     Comment,
     CommentEndDash,
     CommentEnd,
     SelfClosingStartTag,
+    ScriptData,
   };
 
   State m_state{State::Data};
@@ -123,12 +125,14 @@ private:
   void handle_after_attribute_name();
   void handle_before_attribute_value();
   void handle_attribute_value_double_quoted();
+  void handle_attribute_value_unquoted();
   void handle_after_attribute_value_quoted();
   void handle_comment_start();
   void handle_comment();
   void handle_comment_end_dash();
   void handle_comment_end();
   void handle_self_closing_start_tag();
+  void handle_script_data();
 
   [[nodiscard]] Token &current_token() { return m_tokens.back(); }
   char consume() { return m_data[m_current++]; }

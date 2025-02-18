@@ -19,5 +19,5 @@ int main(int argc, char *argv[]) {
   auto tokens = tokenizer.parse();
 
   Parser parser(tokens);
-  std::cout << parser.parse()->dump() << std::endl;
+  std::cout << parser.parse()->dump(0) << std::endl;
 }

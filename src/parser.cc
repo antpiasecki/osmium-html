@@ -14,7 +14,9 @@ std::shared_ptr<Node> Parser::parse() {
     switch (t.type()) {
     case TokenType::StartTag: {
       if (!text.empty()) {
-        current_node()->append(std::make_shared<TextNode>(text));
+        if (current_node()->name() != "head") {
+          current_node()->append(std::make_shared<TextNode>(text));
+        }
         text = "";
       }
 
@@ -32,12 +34,15 @@ std::shared_ptr<Node> Parser::parse() {
     }; break;
     case TokenType::EndTag:
       if (!text.empty()) {
-        current_node()->append(std::make_shared<TextNode>(text));
+        if (current_node()->name() != "head") {
+          current_node()->append(std::make_shared<TextNode>(text));
+        }
         text = "";
       }
 
-      // TODO
-      assert(current_node()->name() == t.data());
+      if (current_node()->name() != t.data()) {
+        UNIMPLEMENTED();
+      }
       m_open_elements.pop();
       break;
     case TokenType::Character:
