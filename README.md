@@ -1,3 +1,3 @@
 # osmium-html
 
-[Spec](https://html.spec.whatwg.org/multipage/parsing.html)-compliant™ HTML parser
+Osmium's HTML parser library

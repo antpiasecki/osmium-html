@@ -49,6 +49,7 @@ std::vector<Token> Tokenizer::parse() {
           {State::AfterAttributeValueQuoted,
            [this]() { handle_after_attribute_value_quoted(); }},
           {State::CommentStart, [this]() { handle_comment_start(); }},
+          {State::CommentStartDash, [this]() { handle_comment_start_dash(); }},
           {State::Comment, [this]() { handle_comment(); }},
           {State::CommentEndDash, [this]() { handle_comment_end_dash(); }},
           {State::CommentEnd, [this]() { handle_comment_end(); }},
@@ -295,7 +296,9 @@ void Tokenizer::handle_after_attribute_name() {
   } else if (c == '>') {
     m_state = State::Data;
   } else {
-    UNIMPLEMENTED();
+    current_token().attributes().push_back(Token::Attribute{});
+    m_current--;
+    m_state = State::AttributeName;
   }
 }
 
@@ -365,10 +368,24 @@ void Tokenizer::handle_after_attribute_value_quoted() {
 void Tokenizer::handle_comment_start() {
   char c = consume();
   if (c == '-') {
-    UNIMPLEMENTED();
+    m_state = State::CommentStartDash;
   } else if (c == '>') {
     UNIMPLEMENTED();
   } else {
+    m_current--;
+    m_state = State::Comment;
+  }
+}
+
+// https://html.spec.whatwg.org/multipage/parsing.html#comment-start-dash-state
+void Tokenizer::handle_comment_start_dash() {
+  char c = consume();
+  if (c == '-') {
+    m_state = State::CommentEnd;
+  } else if (c == '>') {
+    UNIMPLEMENTED();
+  } else {
+    current_token().data() += "-";
     m_current--;
     m_state = State::Comment;
   }
@@ -429,10 +446,7 @@ void Tokenizer::handle_self_closing_start_tag() {
 // not in the spec and very buggy but its the easiest way to do this. im sorry
 void Tokenizer::handle_script_data() {
   if (std::toupper(peek(0)) == '<' && std::toupper(peek(1)) == '/' &&
-      std::toupper(peek(2)) == 'S' && std::toupper(peek(3)) == 'C' &&
-      std::toupper(peek(4)) == 'R' && std::toupper(peek(5)) == 'I' &&
-      std::toupper(peek(6)) == 'P' && std::toupper(peek(7)) == 'T' &&
-      std::toupper(peek(8)) == '>') {
+      std::toupper(peek(2)) == 'S') {
     m_state = State::Data;
   } else {
     char c = consume();

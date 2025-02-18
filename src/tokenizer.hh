@@ -95,6 +95,7 @@ private:
     AttributeValueUnquoted,
     AfterAttributeValueQuoted,
     CommentStart,
+    CommentStartDash,
     Comment,
     CommentEndDash,
     CommentEnd,
@@ -128,6 +129,7 @@ private:
   void handle_attribute_value_unquoted();
   void handle_after_attribute_value_quoted();
   void handle_comment_start();
+  void handle_comment_start_dash();
   void handle_comment();
   void handle_comment_end_dash();
   void handle_comment_end();
