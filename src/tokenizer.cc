@@ -1,27 +1,46 @@
-#include "parser.hh"
-#include "dom.hh"
+#include "tokenizer.hh"
 #include <cassert>
 #include <cctype>
 #include <functional>
 #include <iostream>
-#include <memory>
-#include <stdexcept>
+#include <sstream>
 
 #define UNIMPLEMENTED()                                                        \
   std::cerr << "UNIMPLEMENTED() reached on " << __FILE__ << ", line "          \
             << __LINE__ << "\n";                                               \
   exit(1)
 
-std::shared_ptr<Node> Parser::parse() {
-  while (!eof()) { // TODO: handle EOF
-    std::cout << "stepping\n";
-    step();
+std::ostream &operator<<(std::ostream &os, const TokenType e) {
+  switch (e) {
+  case TokenType::StartTag:
+    os << "StartTag";
+    break;
+  case TokenType::EndTag:
+    os << "EndTag";
+    break;
+  case TokenType::Character:
+    os << "Character";
+    break;
+  default:
+    UNIMPLEMENTED();
   }
-  std::cout << m_text << std::endl;
-  return nullptr;
+  return os;
 }
 
-void Parser::step() {
+std::string Token::dump() const {
+  std::stringstream ss;
+  ss << "Token(" << m_type << ", " << m_data << ")";
+  return ss.str();
+}
+
+std::vector<Token> Tokenizer::parse() {
+  while (!eof()) { // TODO: handle EOF
+    step();
+  }
+  return m_tokens;
+}
+
+void Tokenizer::step() {
   static const std::unordered_map<State, std::function<void()>> state_handlers =
       {{State::Data, [this]() { step_data(); }},
        {State::TagOpen, [this]() { step_tag_open(); }},
@@ -34,24 +53,22 @@ void Parser::step() {
 }
 
 // https://html.spec.whatwg.org/multipage/parsing.html#data-state
-void Parser::step_data() {
+void Tokenizer::step_data() {
   char c = consume();
   if (c == '<') {
     m_state = State::TagOpen;
   } else {
-    // TODO: we're supposed to emit each character as a token for some reason
-    // >Emit the current input character as a character token.
-    m_text += c;
+    m_tokens.emplace_back(TokenType::Character, std::string(1, c));
   }
 }
 
 // https://html.spec.whatwg.org/multipage/parsing.html#tag-open-state
-void Parser::step_tag_open() {
+void Tokenizer::step_tag_open() {
   char c = consume();
   if (c == '/') {
     m_state = State::EndTagOpen;
   } else if (std::isalpha(c) != 0) {
-    m_current_tag_name = "";
+    m_tokens.emplace_back(TokenType::StartTag, "");
     m_current--;
     m_state = State::TagName;
   } else {
@@ -60,21 +77,20 @@ void Parser::step_tag_open() {
 }
 
 // https://html.spec.whatwg.org/multipage/parsing.html#tag-name-state
-void Parser::step_tag_name() {
+void Tokenizer::step_tag_name() {
   char c = consume();
   if (c == '>') {
     m_state = State::Data;
-    std::cout << "emitting " << m_current_tag_name << std::endl;
   } else {
-    m_current_tag_name += c;
+    current_token().data() += c;
   }
 }
 
 // https://html.spec.whatwg.org/multipage/parsing.html#end-tag-open-state
-void Parser::step_end_tag_open() {
+void Tokenizer::step_end_tag_open() {
   char c = consume();
   if (std::isalpha(c) != 0) {
-    m_current_tag_name = "";
+    m_tokens.emplace_back(TokenType::EndTag, "");
     m_current--;
     m_state = State::TagName;
   } else {
