@@ -1,17 +1,6 @@
 #include "tokenizer.hh"
 #include <cassert>
 #include <functional>
-#include <sstream>
-
-std::string Token::dump() const {
-  std::stringstream ss;
-  ss << "Token(" << m_type << ", \"" << m_data << "\"";
-  for (const auto &attr : m_attributes) {
-    ss << ", " << attr.name << "=" << attr.value;
-  }
-  ss << ")";
-  return ss.str();
-}
 
 std::vector<Token> Tokenizer::parse() {
   static const std::unordered_map<State, std::function<void()>> state_handlers =
@@ -44,6 +33,8 @@ std::vector<Token> Tokenizer::parse() {
            [this]() { handle_before_attribute_value(); }},
           {State::AttributeValueDoubleQuoted,
            [this]() { handle_attribute_value_double_quoted(); }},
+          {State::AttributeValueSingleQuoted,
+           [this]() { handle_attribute_value_single_quoted(); }},
           {State::AttributeValueUnquoted,
            [this]() { handle_attribute_value_unquoted(); }},
           {State::AfterAttributeValueQuoted,
@@ -51,11 +42,20 @@ std::vector<Token> Tokenizer::parse() {
           {State::CommentStart, [this]() { handle_comment_start(); }},
           {State::CommentStartDash, [this]() { handle_comment_start_dash(); }},
           {State::Comment, [this]() { handle_comment(); }},
+          {State::CommentLessThanSign,
+           [this]() { handle_comment_less_than_sign(); }},
+          {State::CommentLessThanSignBang,
+           [this]() { handle_comment_less_than_sign_bang(); }},
+          {State::CommentLessThanSignBangDash,
+           [this]() { handle_comment_less_than_sign_bang_dash(); }},
+          {State::CommentLessThanSignBangDashDash,
+           [this]() { handle_comment_less_than_sign_bang_dash_dash(); }},
           {State::CommentEndDash, [this]() { handle_comment_end_dash(); }},
           {State::CommentEnd, [this]() { handle_comment_end(); }},
           {State::SelfClosingStartTag,
            [this]() { handle_self_closing_start_tag(); }},
           {State::ScriptData, [this]() { handle_script_data(); }},
+          {State::StyleData, [this]() { handle_style_data(); }},
       };
 
   while (!eof()) {
@@ -100,9 +100,11 @@ void Tokenizer::handle_tag_name() {
   char c = consume();
   if (c == '>') {
     if (current_token().type() == TokenType::StartTag &&
-        (current_token().data() == "script" ||
-         current_token().data() == "style")) {
+        current_token().data() == "script") {
       m_state = State::ScriptData;
+    } else if (current_token().type() == TokenType::StartTag &&
+               current_token().data() == "style") {
+      m_state = State::StyleData;
     } else {
       m_state = State::Data;
     }
@@ -310,7 +312,7 @@ void Tokenizer::handle_before_attribute_value() {
   } else if (c == '"') {
     m_state = State::AttributeValueDoubleQuoted;
   } else if (c == '\'') {
-    UNIMPLEMENTED();
+    m_state = State::AttributeValueSingleQuoted;
   } else if (c == '>') {
     UNIMPLEMENTED();
   } else {
@@ -328,15 +330,28 @@ void Tokenizer::handle_attribute_value_double_quoted() {
   }
 }
 
+// https://html.spec.whatwg.org/multipage/parsing.html#attribute-value-(single-quoted)-state
+void Tokenizer::handle_attribute_value_single_quoted() {
+  char c = consume();
+  if (c == '\'') {
+    m_state = State::AfterAttributeValueQuoted;
+  } else {
+    current_token().attributes().back().value += c;
+  }
+}
+
 // https://html.spec.whatwg.org/multipage/parsing.html#attribute-value-(unquoted)-state
 void Tokenizer::handle_attribute_value_unquoted() {
   char c = consume();
   if (c == ' ' || c == '\t' || c == '\n') {
     m_state = State::BeforeAttributeName;
   } else if (c == '>') {
-    if (current_token().data() == "script" ||
-        current_token().data() == "style") {
+    if (current_token().type() == TokenType::StartTag &&
+        current_token().data() == "script") {
       m_state = State::ScriptData;
+    } else if (current_token().type() == TokenType::StartTag &&
+               current_token().data() == "style") {
+      m_state = State::StyleData;
     } else {
       m_state = State::Data;
     }
@@ -353,9 +368,12 @@ void Tokenizer::handle_after_attribute_value_quoted() {
   } else if (c == '/') {
     m_state = State::SelfClosingStartTag;
   } else if (c == '>') {
-    if (current_token().data() == "script" ||
-        current_token().data() == "style") {
+    if (current_token().type() == TokenType::StartTag &&
+        current_token().data() == "script") {
       m_state = State::ScriptData;
+    } else if (current_token().type() == TokenType::StartTag &&
+               current_token().data() == "style") {
+      m_state = State::StyleData;
     } else {
       m_state = State::Data;
     }
@@ -395,11 +413,59 @@ void Tokenizer::handle_comment_start_dash() {
 void Tokenizer::handle_comment() {
   char c = consume();
   if (c == '<') {
-    UNIMPLEMENTED();
+    current_token().data() += c;
+    m_state = State::CommentLessThanSign;
   } else if (c == '-') {
     m_state = State::CommentEndDash;
   } else {
     current_token().data() += c;
+  }
+}
+
+// https://html.spec.whatwg.org/multipage/parsing.html#comment-less-than-sign-state
+void Tokenizer::handle_comment_less_than_sign() {
+  char c = consume();
+  if (c == '<') {
+    current_token().data() += c;
+  } else if (c == '!') {
+    m_state = State::CommentLessThanSignBang;
+  } else {
+    m_current--;
+    m_state = State::Comment;
+  }
+}
+
+// https://html.spec.whatwg.org/multipage/parsing.html#comment-less-than-sign-bang-state
+void Tokenizer::handle_comment_less_than_sign_bang() {
+  char c = consume();
+  if (c == '-') {
+    m_state = State::CommentLessThanSignBangDash;
+  } else {
+    m_current--;
+    m_state = State::Comment;
+  }
+}
+
+// https://html.spec.whatwg.org/multipage/parsing.html#comment-less-than-sign-bang-dash-state
+void Tokenizer::handle_comment_less_than_sign_bang_dash() {
+  char c = consume();
+  if (c == '-') {
+    m_state = State::CommentLessThanSignBangDashDash;
+  } else {
+    m_current--;
+    m_state = State::Comment;
+  }
+}
+
+// https://html.spec.whatwg.org/multipage/parsing.html#comment-less-than-sign-bang-dash-dash-state
+void Tokenizer::handle_comment_less_than_sign_bang_dash_dash() {
+  char c = consume();
+  if (c == '>') {
+    m_state = State::CommentEnd;
+  } else {
+    // TODO: this is an error but ebay uses it
+    m_current--;
+    m_state = State::CommentEnd;
   }
 }
 
@@ -446,7 +512,22 @@ void Tokenizer::handle_self_closing_start_tag() {
 // not in the spec and very buggy but its the easiest way to do this. im sorry
 void Tokenizer::handle_script_data() {
   if (std::toupper(peek(0)) == '<' && std::toupper(peek(1)) == '/' &&
-      std::toupper(peek(2)) == 'S') {
+      std::toupper(peek(2)) == 'S' && std::toupper(peek(3)) == 'C' &&
+      std::toupper(peek(4)) == 'R' && std::toupper(peek(5)) == 'I' &&
+      std::toupper(peek(6)) == 'P' && std::toupper(peek(7)) == 'T' &&
+      std::toupper(peek(8)) == '>') {
+    m_state = State::Data;
+  } else {
+    char c = consume();
+    m_tokens.emplace_back(TokenType::Character, std::string(1, c));
+  }
+}
+
+void Tokenizer::handle_style_data() {
+  if (std::toupper(peek(0)) == '<' && std::toupper(peek(1)) == '/' &&
+      std::toupper(peek(2)) == 'S' && std::toupper(peek(3)) == 'T' &&
+      std::toupper(peek(4)) == 'Y' && std::toupper(peek(5)) == 'L' &&
+      std::toupper(peek(6)) == 'E' && std::toupper(peek(7)) == '>') {
     m_state = State::Data;
   } else {
     char c = consume();

@@ -3,13 +3,10 @@
 #include <cassert>
 #include <fstream>
 #include <iostream>
-#include <span>
 #include <sstream>
 
-int main(int argc, char *argv[]) {
-  auto args = std::span(argv, static_cast<size_t>(argc));
-
-  std::ifstream file(args[1]);
+int main(int /*argc*/, char *argv[]) {
+  std::ifstream file(argv[1]);
   assert(file.good());
 
   std::stringstream ss;

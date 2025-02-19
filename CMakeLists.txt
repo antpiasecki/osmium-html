@@ -5,9 +5,9 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_executable(${PROJECT_NAME}
-        src/main.cc
-        src/tokenizer.cc
-        src/parser.cc)
+add_library(osmium-html src/tokenizer.cc src/parser.cc)
+target_compile_options(osmium-html PRIVATE -Wall -Wextra -Wpedantic -Wconversion)
 
-target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -Wconversion)
+add_executable(parser src/main.cc)
+target_link_libraries(parser PRIVATE osmium-html)
+target_compile_options(parser PRIVATE -Wall -Wextra -Wpedantic -Wconversion)

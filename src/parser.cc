@@ -41,9 +41,11 @@ std::shared_ptr<Node> Parser::parse() {
       }
 
       if (current_node()->name() != t.data()) {
-        UNIMPLEMENTED();
+        // TODO: we really should handle this but there is like a thousand
+        // different insertion modes in the spec
+      } else {
+        m_open_elements.pop();
       }
-      m_open_elements.pop();
       break;
     case TokenType::Character:
       text += t.data();

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -57,7 +58,15 @@ public:
   [[nodiscard]] bool is_self_closing() const { return m_is_self_closing; }
   void set_is_self_closing(bool v) { m_is_self_closing = v; }
 
-  [[nodiscard]] std::string dump() const;
+  [[nodiscard]] std::string dump() const {
+    std::stringstream ss;
+    ss << "Token(" << m_type << ", \"" << m_data << "\"";
+    for (const auto &attr : m_attributes) {
+      ss << ", " << attr.name << "=" << attr.value;
+    }
+    ss << ")";
+    return ss.str();
+  }
 
 private:
   TokenType m_type;
@@ -92,15 +101,21 @@ private:
     AfterAttributeName,
     BeforeAttributeValue,
     AttributeValueDoubleQuoted,
+    AttributeValueSingleQuoted,
     AttributeValueUnquoted,
     AfterAttributeValueQuoted,
     CommentStart,
     CommentStartDash,
     Comment,
+    CommentLessThanSign,
+    CommentLessThanSignBang,
+    CommentLessThanSignBangDash,
+    CommentLessThanSignBangDashDash,
     CommentEndDash,
     CommentEnd,
     SelfClosingStartTag,
     ScriptData,
+    StyleData,
   };
 
   State m_state{State::Data};
@@ -113,6 +128,10 @@ private:
   void handle_tag_name();
   void handle_end_tag_open();
   void handle_markup_declaration_open();
+  void handle_self_closing_start_tag();
+  void handle_script_data();
+  void handle_style_data();
+
   void handle_doctype();
   void handle_before_doctype_name();
   void handle_doctype_name();
@@ -121,20 +140,25 @@ private:
   void handle_before_doctype_public_identifier();
   void handle_doctype_public_identifier_double_quoted();
   void handle_after_doctype_public_identifier();
+
   void handle_before_attribute_name();
   void handle_attribute_name();
   void handle_after_attribute_name();
   void handle_before_attribute_value();
   void handle_attribute_value_double_quoted();
+  void handle_attribute_value_single_quoted();
   void handle_attribute_value_unquoted();
   void handle_after_attribute_value_quoted();
+
   void handle_comment_start();
   void handle_comment_start_dash();
   void handle_comment();
+  void handle_comment_less_than_sign();
+  void handle_comment_less_than_sign_bang();
+  void handle_comment_less_than_sign_bang_dash();
+  void handle_comment_less_than_sign_bang_dash_dash();
   void handle_comment_end_dash();
   void handle_comment_end();
-  void handle_self_closing_start_tag();
-  void handle_script_data();
 
   [[nodiscard]] Token &current_token() { return m_tokens.back(); }
   char consume() { return m_data[m_current++]; }
