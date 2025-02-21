@@ -23,3 +23,5 @@ private:
   Token &consume() { return m_tokens[m_current++]; }
   [[nodiscard]] bool eof() const { return m_current >= m_tokens.size(); }
 };
+
+std::shared_ptr<Node> parse(const std::string &s);

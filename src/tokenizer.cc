@@ -511,11 +511,10 @@ void Tokenizer::handle_self_closing_start_tag() {
 
 // not in the spec and very buggy but its the easiest way to do this. im sorry
 void Tokenizer::handle_script_data() {
-  if (std::toupper(peek(0)) == '<' && std::toupper(peek(1)) == '/' &&
-      std::toupper(peek(2)) == 'S' && std::toupper(peek(3)) == 'C' &&
-      std::toupper(peek(4)) == 'R' && std::toupper(peek(5)) == 'I' &&
-      std::toupper(peek(6)) == 'P' && std::toupper(peek(7)) == 'T' &&
-      std::toupper(peek(8)) == '>') {
+  if (peek(0) == '<' && peek(1) == '/' && std::toupper(peek(2)) == 'S' &&
+      std::toupper(peek(3)) == 'C' && std::toupper(peek(4)) == 'R' &&
+      std::toupper(peek(5)) == 'I' && std::toupper(peek(6)) == 'P' &&
+      std::toupper(peek(7)) == 'T' && peek(8) == '>') {
     m_state = State::Data;
   } else {
     char c = consume();
@@ -524,10 +523,10 @@ void Tokenizer::handle_script_data() {
 }
 
 void Tokenizer::handle_style_data() {
-  if (std::toupper(peek(0)) == '<' && std::toupper(peek(1)) == '/' &&
-      std::toupper(peek(2)) == 'S' && std::toupper(peek(3)) == 'T' &&
-      std::toupper(peek(4)) == 'Y' && std::toupper(peek(5)) == 'L' &&
-      std::toupper(peek(6)) == 'E' && std::toupper(peek(7)) == '>') {
+  if (peek(0) == '<' && peek(1) == '/' && std::toupper(peek(2)) == 'S' &&
+      std::toupper(peek(3)) == 'T' && std::toupper(peek(4)) == 'Y' &&
+      std::toupper(peek(5)) == 'L' && std::toupper(peek(6)) == 'E' &&
+      peek(7) == '>') {
     m_state = State::Data;
   } else {
     char c = consume();

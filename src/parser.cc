@@ -76,3 +76,11 @@ bool Parser::is_void_element(const std::string &name) {
          name == "link" || name == "meta" || name == "source" ||
          name == "track" || name == "wbr";
 }
+
+std::shared_ptr<Node> parse(const std::string &s) {
+  Tokenizer tokenizer(s);
+  auto tokens = tokenizer.parse();
+
+  Parser parser(tokens);
+  return parser.parse();
+}

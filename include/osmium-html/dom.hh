@@ -1,7 +1,6 @@
 #pragma once
 
 #include <memory>
-#include <regex>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -9,9 +8,23 @@
 #include <vector>
 
 static std::string escape(const std::string &s) {
-  auto out = s;
-  out = std::regex_replace(out, std::regex("\n"), "\\n");
-  out = std::regex_replace(out, std::regex("\""), "\\\"");
+  std::string out;
+  out.reserve(s.size());
+
+  for (char c : s) {
+    switch (c) {
+    case '\n':
+      out += "\\n";
+      break;
+    case '\"':
+      out += "\\\"";
+      break;
+    default:
+      out += c;
+      break;
+    }
+  }
+
   return out;
 }
 
