@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -31,6 +32,7 @@ static std::string escape(const std::string &s) {
 class Node {
 public:
   virtual ~Node() = default;
+  [[nodiscard]] virtual bool is_element() const = 0;
   virtual std::string dump(size_t i) = 0;
 };
 
@@ -46,9 +48,17 @@ public:
     return m_children;
   }
 
+  [[nodiscard]] bool is_heading() const {
+    static const std::set<const char *> tags = {"h1", "h2", "h3",
+                                                "h4", "h5", "h6"};
+    return tags.find(m_name.c_str()) != tags.end();
+  }
+
   void append(const std::shared_ptr<Node> &child) {
     m_children.emplace_back(child);
   }
+
+  [[nodiscard]] bool is_element() const override { return true; }
 
   std::string dump(size_t i) override {
     std::stringstream ss;
@@ -74,6 +84,8 @@ public:
   explicit TextNode(std::string content) : m_content(std::move(content)) {}
 
   [[nodiscard]] std::string content() const { return m_content; }
+
+  [[nodiscard]] bool is_element() const override { return false; }
 
   std::string dump(size_t i) override {
     std::stringstream ss;
