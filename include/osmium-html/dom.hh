@@ -4,6 +4,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -36,6 +37,8 @@ public:
   virtual std::string dump(size_t i) = 0;
 };
 
+using NodePtr = std::shared_ptr<Node>;
+
 class Element : public Node {
 public:
   using Attributes = std::unordered_map<std::string, std::string>;
@@ -44,19 +47,17 @@ public:
 
   [[nodiscard]] std::string name() const { return m_name; }
   [[nodiscard]] Attributes &attributes() { return m_attributes; }
-  [[nodiscard]] const std::vector<std::shared_ptr<Node>> &children() const {
+  [[nodiscard]] const std::vector<NodePtr> &children() const {
     return m_children;
   }
 
   [[nodiscard]] bool is_heading() const {
-    static const std::set<const char *> tags = {"h1", "h2", "h3",
-                                                "h4", "h5", "h6"};
-    return tags.find(m_name.c_str()) != tags.end();
+    static const std::set<std::string_view> tags = {"h1", "h2", "h3",
+                                                    "h4", "h5", "h6"};
+    return tags.find(m_name) != tags.end();
   }
 
-  void append(const std::shared_ptr<Node> &child) {
-    m_children.emplace_back(child);
-  }
+  void append(const NodePtr &child) { m_children.emplace_back(child); }
 
   [[nodiscard]] bool is_element() const override { return true; }
 
@@ -76,8 +77,10 @@ public:
 private:
   std::string m_name;
   Attributes m_attributes;
-  std::vector<std::shared_ptr<Node>> m_children;
+  std::vector<NodePtr> m_children;
 };
+
+using ElementPtr = std::shared_ptr<Element>;
 
 class TextNode : public Node {
 public:
@@ -96,3 +99,5 @@ public:
 private:
   std::string m_content;
 };
+
+using TextNodePtr = std::shared_ptr<TextNode>;
