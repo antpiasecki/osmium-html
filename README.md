@@ -1,3 +1,3 @@
 # osmium-html
 
-Osmium's HTML parser library
+[Osmium](https://github.com/antpiasecki/osmium)'s HTML parser library
