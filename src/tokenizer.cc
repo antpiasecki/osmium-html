@@ -22,6 +22,12 @@ std::vector<Token> Tokenizer::parse() {
        [this]() { handle_doctype_public_identifier_double_quoted(); }},
       {State::AfterDoctypePublicIdentifier,
        [this]() { handle_after_doctype_public_identifier(); }},
+      {State::BetweenDoctypePublicAndSystemIdentifiers,
+       [this]() { handle_between_doctype_public_and_system_identifiers(); }},
+      {State::DoctypeSystemIdentifierDoubleQuoted,
+       [this]() { handle_doctype_system_identifier_double_quoted(); }},
+      {State::AfterDoctypeSystemIdentifier,
+       [this]() { handle_after_doctype_system_identifier(); }},
       {State::BeforeAttributeName,
        [this]() { handle_before_attribute_name(); }},
       {State::AttributeName, [this]() { handle_attribute_name(); }},
@@ -66,7 +72,7 @@ std::vector<Token> Tokenizer::parse() {
 // https://html.spec.whatwg.org/multipage/parsing.html#data-state
 void Tokenizer::handle_data() {
   char c = consume();
-  // TODO: handle entities
+  // TODO: handle entities (&)
   if (c == '<') {
     m_state = State::TagOpen;
   } else {
@@ -88,7 +94,10 @@ void Tokenizer::handle_tag_open() {
   } else if (c == '?') {
     UNIMPLEMENTED();
   } else {
-    UNIMPLEMENTED();
+    // TODO: This is an invalid-first-character-of-tag-name parse error.
+    m_tokens.emplace_back(TokenType::Character, "<");
+    m_current--;
+    m_state = State::Data;
   }
 }
 
@@ -237,11 +246,52 @@ void Tokenizer::handle_doctype_public_identifier_double_quoted() {
 void Tokenizer::handle_after_doctype_public_identifier() {
   char c = consume();
   if (c == ' ' || c == '\t' || c == '\n') {
-    UNIMPLEMENTED();
+    m_state = State::BetweenDoctypePublicAndSystemIdentifiers;
   } else if (c == '"') {
     UNIMPLEMENTED();
   } else if (c == '\'') {
     UNIMPLEMENTED();
+  } else if (c == '>') {
+    m_state = State::Data;
+  } else {
+    UNIMPLEMENTED();
+  }
+}
+
+// https://html.spec.whatwg.org/multipage/parsing.html#between-doctype-public-and-system-identifiers-state
+void Tokenizer::handle_between_doctype_public_and_system_identifiers() {
+  char c = consume();
+  if (c == ' ' || c == '\t' || c == '\n') {
+    // ignore
+  } else if (c == '"') {
+    m_state = State::DoctypeSystemIdentifierDoubleQuoted;
+  } else if (c == '\'') {
+    UNIMPLEMENTED();
+  } else if (c == '>') {
+    m_state = State::Data;
+  } else {
+    UNIMPLEMENTED();
+  }
+}
+
+// https://html.spec.whatwg.org/multipage/parsing.html#doctype-system-identifier-(double-quoted)-state
+void Tokenizer::handle_doctype_system_identifier_double_quoted() {
+  char c = consume();
+  if (c == '"') {
+    m_state = State::AfterDoctypeSystemIdentifier;
+  } else if (c == '>') {
+    UNIMPLEMENTED();
+  } else {
+    // TODO: >Append the current input character to the current DOCTYPE
+    // token's system identifier.
+  }
+}
+
+// https://html.spec.whatwg.org/multipage/parsing.html#after-doctype-system-identifier-state
+void Tokenizer::handle_after_doctype_system_identifier() {
+  char c = consume();
+  if (c == ' ' || c == '\t' || c == '\n') {
+    // ignore
   } else if (c == '>') {
     m_state = State::Data;
   } else {
@@ -277,7 +327,8 @@ void Tokenizer::handle_attribute_name() {
   } else if (c == '>') {
     m_state = State::Data;
   } else if (c == '"' || c == '\'' || c == '<') {
-    UNIMPLEMENTED();
+    // TODO: This is an unexpected-character-in-attribute-name parse error.
+    current_token().attributes().back().name += c;
   } else {
     current_token().attributes().back().name += c;
   }
@@ -375,7 +426,9 @@ void Tokenizer::handle_after_attribute_value_quoted() {
       m_state = State::Data;
     }
   } else {
-    UNIMPLEMENTED();
+    // TODO: This is a missing-whitespace-between-attributes parse error.
+    m_current--;
+    m_state = State::BeforeAttributeName;
   }
 }
 
@@ -460,7 +513,7 @@ void Tokenizer::handle_comment_less_than_sign_bang_dash_dash() {
   if (c == '>') {
     m_state = State::CommentEnd;
   } else {
-    // TODO: this is an error but ebay uses it
+    // TODO: This is a nested-comment parse error.
     m_current--;
     m_state = State::CommentEnd;
   }
@@ -502,7 +555,9 @@ void Tokenizer::handle_self_closing_start_tag() {
     current_token().set_is_self_closing(true);
     m_state = State::Data;
   } else {
-    UNIMPLEMENTED();
+    // TODO: This is an unexpected-solidus-in-tag parse error.
+    m_current--;
+    m_state = State::BeforeAttributeName;
   }
 }
 

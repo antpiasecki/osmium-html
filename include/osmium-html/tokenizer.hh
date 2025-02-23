@@ -96,6 +96,9 @@ private:
     BeforeDoctypePublicIdentifier,
     DoctypePublicIdentifierDoubleQuoted,
     AfterDoctypePublicIdentifier,
+    BetweenDoctypePublicAndSystemIdentifiers,
+    DoctypeSystemIdentifierDoubleQuoted,
+    AfterDoctypeSystemIdentifier,
     BeforeAttributeName,
     AttributeName,
     AfterAttributeName,
@@ -140,6 +143,9 @@ private:
   void handle_before_doctype_public_identifier();
   void handle_doctype_public_identifier_double_quoted();
   void handle_after_doctype_public_identifier();
+  void handle_between_doctype_public_and_system_identifiers();
+  void handle_doctype_system_identifier_double_quoted();
+  void handle_after_doctype_system_identifier();
 
   void handle_before_attribute_name();
   void handle_attribute_name();
